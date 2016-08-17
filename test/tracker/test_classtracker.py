@@ -1,6 +1,7 @@
 import sys
 import time
 import unittest
+import inspect
 
 from pympler.classtracker import ClassTracker
 import pympler.process
@@ -25,6 +26,20 @@ class FooNew(object):
 class BarNew(FooNew):
     def __init__(self):
         super(BarNew, self).__init__()
+
+
+class ClassA(object):
+    pass
+
+
+class ClassB(object):
+    def __init__(self, var1):
+        self.var = var1
+
+
+class ClassC(ClassA, ClassB):
+    def __init__(self, *arg):
+        super(ClassC, self).__init__(*arg)
 
 
 class TrackObjectTestCase(unittest.TestCase):
@@ -403,6 +418,34 @@ class TrackClassTestCase(unittest.TestCase):
         self.assertEqual(self.tracker.index['Baz'][0].ref(),foo)
 
 
+class DiamondInheritanceTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.tracker = ClassTracker()
+
+    def tearDown(self):
+        self.tracker.stop_periodic_snapshots()
+        self.tracker.clear()
+
+    def test_untracked_diamonds(self):
+        classC = ClassC('hello')
+
+        self.assert_(hasattr(classC, 'var'))
+        self.assert_(classC.var == 'hello')
+
+    def test_diamond_classes(self):
+        self.tracker.track_class(Foo, name='Foobar')
+        self.tracker.track_class(ClassA)
+        self.tracker.track_class(ClassB)
+        self.tracker.track_class(ClassC, name='Class C')
+
+        classC = ClassC('hello')
+
+        self.assert_('Class C' in self.tracker.index)
+        self.assert_(hasattr(classC, 'var'))
+        self.assert_(classC.var == 'hello')
+
+
 class TrackerTestCase(unittest.TestCase):
 
     def test_detach_on_close(self):
@@ -418,6 +461,7 @@ if __name__ == "__main__":
     tclasses = [TrackObjectTestCase,
                 TrackClassTestCase,
                 SnapshotTestCase,
+                DiamondInheritanceTestCase,
                 TrackerTestCase
                ]
     for tclass in tclasses:

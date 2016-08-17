@@ -52,11 +52,13 @@ def get_tests(dir='.', clean=False):
     res.sort(key=lambda s: -s.count('muppy'))
     return res  # sorted(res)
 
-def suite(dirs=['.'], clean=False, pre=True, verbose=2):
+def suite(dirs=None, clean=False, pre=True, verbose=2):
     '''Create a suite with all tests from the given directories.
 
     This will also include tests from subdirectories.
     '''
+    dirs = dirs or ['.']
+
     all = True
     res = unittest.TestSuite()
     for dir in dirs:

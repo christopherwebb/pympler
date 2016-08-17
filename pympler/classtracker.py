@@ -9,7 +9,7 @@ different tracked objects.
 
 from collections import defaultdict
 from functools import partial
-from inspect import stack, isclass
+from inspect import stack, isclass, getmro
 from threading import Thread, Lock
 from time import sleep, time
 from weakref import ref as weakref_ref
@@ -316,11 +316,28 @@ class ClassTracker(object):
         Cookbook by Ken Seehof. The original constructors may be restored
         later.
         """
+        def new_class_constructor(self, *_args, **_kwargs):
+            useNext = False
+            for base_class in getmro(type(self)):
+                if useNext:
+                    if '__init__' in base_class.__dict__:
+                        base_class.__init__(self, *_args, **_kwargs)
+                        return
+
+                elif base_class == cls:
+                    useNext = True
+
         try:
-            constructor = cls.__init__
+            if '__init__' in getmro(cls)[0].__dict__:
+                constructor = cls.__init__
+            else:
+                constructor = new_class_constructor
         except AttributeError:
-            def constructor(self, *_args, **_kwargs):
-                pass
+            if issubclass(cls, object):
+                constructor = new_class_constructor
+            else:
+                def constructor(self, *_args, **_kwargs):
+                    pass
 
         # Possible name clash between keyword arguments of the tracked class'
         # constructor and the curried arguments of the injected constructor.
