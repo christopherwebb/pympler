@@ -34,12 +34,26 @@ class ClassA(object):
 
 class ClassB(object):
     def __init__(self, var1):
-        self.var = var1
+        self.var1 = var1
 
 
 class ClassC(ClassA, ClassB):
     def __init__(self, *arg):
         super(ClassC, self).__init__(*arg)
+
+
+class ClassD(ClassA, ClassB):
+    pass
+
+
+class ClassE(object):
+    def __init__(self, var1):
+        self.var2 = var1
+
+
+class ClassF(ClassD, ClassE):
+    def __init__(self, *args):
+        ClassD.__init__(self, *args)
 
 
 class TrackObjectTestCase(unittest.TestCase):
@@ -427,14 +441,19 @@ class DiamondInheritanceTestCase(unittest.TestCase):
         self.tracker.stop_periodic_snapshots()
         self.tracker.clear()
 
-    def test_untracked_diamonds(self):
-        classC = ClassC('hello')
+    def test_untracked_diamond(self):
+        class_c = ClassC('hello')
 
-        self.assert_(hasattr(classC, 'var'))
-        self.assert_(classC.var == 'hello')
+        self.assert_(hasattr(class_c, 'var1'))
+        self.assert_(class_c.var1 == 'hello')
+
+    def test_untracked_more_complicated_diamond(self):
+        class_f = ClassF('hello')
+        self.assert_(hasattr(class_f, 'var1'))
+        self.assert_(not hasattr(class_f, 'var2'))
+        self.assert_(class_f.var1 == 'hello')
 
     def test_diamond_classes(self):
-        self.tracker.track_class(Foo, name='Foobar')
         self.tracker.track_class(ClassA)
         self.tracker.track_class(ClassB)
         self.tracker.track_class(ClassC, name='Class C')
@@ -442,8 +461,21 @@ class DiamondInheritanceTestCase(unittest.TestCase):
         classC = ClassC('hello')
 
         self.assert_('Class C' in self.tracker.index)
-        self.assert_(hasattr(classC, 'var'))
-        self.assert_(classC.var == 'hello')
+        self.assert_(hasattr(classC, 'var1'))
+        self.assert_(classC.var1 == 'hello')
+
+    def test_complicated_diamond(self):
+        self.tracker.track_class(ClassA)
+        self.tracker.track_class(ClassB)
+        self.tracker.track_class(ClassE)
+        self.tracker.track_class(ClassD)
+        self.tracker.track_class(ClassF)
+
+        class_f = ClassF('hello')
+
+        self.assert_(hasattr(class_f, 'var1'))
+        self.assert_(not hasattr(class_f, 'var2'))
+        self.assert_(class_f.var1 == 'hello')
 
 
 class TrackerTestCase(unittest.TestCase):
